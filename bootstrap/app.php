@@ -1,0 +1,33 @@
+<?php
+
+use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\ResolveBranch;
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
+
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        web: __DIR__.'/../routes/web.php',
+        commands: __DIR__.'/../routes/console.php',
+        health: '/up',
+    )
+    ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->alias([
+            'role' => RoleMiddleware::class,
+            'permission' => PermissionMiddleware::class,
+            'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'active' => EnsureUserIsActive::class,
+            'branch' => ResolveBranch::class,
+        ]);
+
+        // The branch must be known before route-model binding looks a record up, or /invoices/{id} would find another branch's bill.
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: ResolveBranch::class);
+    })
+    ->withExceptions(function (Exceptions $exceptions): void {
+        //
+    })->create();
